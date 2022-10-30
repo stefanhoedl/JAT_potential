@@ -5,7 +5,6 @@ import os
 import pathlib
 import json
 import pickle
-import random
 from datetime import datetime
 from collections import OrderedDict
 import jax
@@ -28,26 +27,21 @@ from jat.utilities import create_array_shuffler, draw_urandom_int32, \
 TRAINING_FRACTION = .865
 N_BATCH = 8
 N_EVAL_BATCH = 32
-SEED = 42
-LOG_COSH_PARAMETER = 1e1  # In angstrom / eV
-LR_MIN, LR_MAX, LR_END = 0.5e-3, 0.3e-2, 0.5e-5
-N_EPOCHS = 2
+SEED = 421
+LOG_COSH_PARAMETER = 1e0  # In angstrom / eV
+LR_MIN, LR_MAX, LR_END = 0.5e-4, 0.3e-3, 0.5e-6
+N_EPOCHS = 2001
 N_PAIR = 15
 
 ## JAT MODEL
-LAYER_DIMS = [48, 48, 48]
+LAYER_DIMS = [48, 48, 48, 48, 48, 48, 48]
 GRAPH_CUT = 5
 EMBED_D = 48
 N_HEADS = 1
 
 instance_code = draw_urandom_int32()
-
-if N_PAIR == 6:
-    CONFIGS_DFT = "./md_dft.json"
-    PICKLE_FILE = f"./ean/models/JatGraphs_small_{instance_code}.pickle"
-elif N_PAIR == 15:
-    CONFIGS_DFT = "./configurations.json" 
-    PICKLE_FILE = f"./ean/models/JatGraphs_big_{instance_code}.pickle"
+CONFIGS_DFT = "./configurations.json" 
+PICKLE_FILE = f"./ean/models/JAT_EAN15_{instance_code}.pickle"
 
 type_cation = ["N", "H", "H", "H", "C", "H", "H", "C", "H", "H", "H"]
 type_anion = ["N", "O", "O", "O"]
@@ -276,6 +270,13 @@ for i in range(N_EPOCHS):
             pickle.dump(model_info, f, protocol=5)
         print(f"woooo {mae} mae & {rmse} rmse")
         min_mae = mae
+    
+    # Periodically save the best model.
+    if i % 250 == 0 and i>0:
+        PICKLE_EPOCH_FILE = f"./ean/models/JAT_EAN15_{instance_code}_epoch{i+1}.pickle"
+        with open(PICKLE_EPOCH_FILE, "wb") as f:
+                pickle.dump(model_info, f, protocol=5)
+    
 
     test_statistics = test_step(model_params)
     test_mae = test_statistics["force_MAE"]
@@ -325,3 +326,13 @@ rmse = statistics["force_RMSE"]
 test_statistics = test_step(model_params)
 test_mae = test_statistics["force_MAE"]
 test_rmse = test_statistics["force_RMSE"]
+print(
+        f"Validation set statistics with loaded parameters: \n"
+        f"RMSE = {rmse} {validation_units['force_RMSE']}. "
+        f"MAE = {mae} {validation_units['force_MAE']}."
+    )
+print(
+        f"Test set statistics with loaded parameters: \n"
+        f"RMSE = {test_rmse} {validation_units['force_RMSE']}. "
+        f"MAE = {test_mae} {validation_units['force_MAE']}."
+    )

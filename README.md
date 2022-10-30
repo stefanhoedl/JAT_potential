@@ -56,7 +56,7 @@ ___
 - thus 1M+ model evaluations, making efficiency crucial
 - model & its gradient for value (energy) and grad (forces)
 <p align="center">
-[<img src="figs/AccuracySpeedTradeoff.png" width="300" align="center"/>](figs/AccuracySpeedTradeoff.png)
+<img src="figs/AccuracySpeedTradeoff.png" width="300" align="center"/>
 </p>
 
 ___
@@ -83,11 +83,13 @@ ___
 
 
 # JAT architecture
+
+
+## [JAT Core](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L17)
 ```
 src > jat_model.py > JatCore
 src > jat_model.py > JatModel
 ```
-
 <p align="center">
 <img src="figs/vis_jatArchitecture.png" align="center"/>
 </p>
@@ -96,7 +98,7 @@ Visualization of the entire JAT architecture. Using the positions and species (t
 
 The readout head transform the features $h^T$ using projection, nonlinearity and normalization layers into the energy contribution for each individual atom. The JAT model's prediction for the potential energy $E_{pot}$ is obtained as the sum over all atoms' contributions, while the forces $\textbf{f}$ are obtained as the model's derivative with respect to the atomic positions.
 
-## Graph Generator
+## [Graph Generator](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L219)
 ```
 src > jat_model.py > GraphGenerator > make_graph
 ```
@@ -108,7 +110,7 @@ src > jat_model.py > GraphGenerator > make_graph
  of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $L^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list*
   in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
 
-## JAT Layer
+## [JAT Layer](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L95)
 ```
 src > jat_model.py > JatLayer
 ```
@@ -118,7 +120,7 @@ src > jat_model.py > JatLayer
 
 Visualization of a single JAT layer, which performs a single round of message passing to update the node feature vectors. The features $\textbf{h}^{t}$ at step $t$ are projected into senders and receivers, and for every pair in the edge list a weight $\alpha$ is calculated using the attention mechanism. The messages are calculated as the element-wise multiplication of the sender features and attention weights $\alpha$. These messages are aggregated to each receiver using a segment sum and transformed with a nonlinearity, skip connection and layer normalization to obtain the updated node features $\textbf{h}^{t+1}$. These are fed into the next JAT layer to repeat the message passing procedure for multiple rounds.
 
-## Linear dynamic attention
+## [Linear dynamic attention](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L122)
 ```
 src > jat_model.py > JatLayer.attention()
 ```
@@ -127,6 +129,26 @@ src > jat_model.py > JatLayer.attention()
 </p>
 Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
 
+
+# EAN Dataset
+```
+ean > train_JAT_EAN.py     - minimal training script, val only
+ean > full_JAT_training.py - full script with val+test, logging, loading
+ean > configurations.json  - EAN dataset
+```
+[Script to train JAT on EAN dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ean/graphs_v1.py)
+
+- Ionic liquid: anion-cation pairs (salt) in liquid phase at room temperature
+- 15 EAN pairs → 225 atoms
+- sampled from OPLS-AA MD trajectory
+- reference energy & forces from DFT
+- 741 configurations
+- training on atomic forces
+
+# ANI-1 Dataset
+```
+ani1 > todo
+```
 
 
 # References

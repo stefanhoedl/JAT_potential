@@ -1,5 +1,5 @@
 # JAT potential: Jraph Attention Networks
-Jraph Attention Networks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids. 
+Jraph Attention Networks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
 
 - predict the potential energy and atomic forces of molecules
 - extends the NeuralIL architecture and implementation
@@ -20,7 +20,7 @@ Performs multiple message passing steps by
 </p>
 
 # Architecture overview & background
-The architecture uses message passing neural networks (MPNN)^2 with an attentional update function (linear dynamic attention, GATv2)^4 by adapting Graph Attention Networks (GAT)^3 to the domain of computational chemistry. The name JAT (JraphAttentionNetworks) derives from adapting Graph Attention Networks in JAX and builds upon the Jraph library. 
+The architecture uses message passing neural networks (MPNN) [2] with an attentional update function (linear dynamic attention, GATv2) [4] by adapting Graph Attention Networks (GAT) [3] to the domain of computational chemistry. The name JAT (JraphAttentionNetworks) derives from adapting Graph Attention Networks in JAX and builds upon the Jraph library. 
 
 The JAT code and architecture was developed during the master's thesis at TU Vienna with the department of Theoretical Materials Chemistry under supervision of Dr. Jesús Carrete Montaña. The NeuralIL^1 implementation serves as a baseline implementation and reuses code to train the model.
 
@@ -61,9 +61,9 @@ ___
 
 ___
 ## Approach
-- Adapt NeuralIL implementation^1
-- replace spherical Bessel descriptors with a Message Passing Neural Network^2
-- using Graph Attention Networks^3
+- Adapt NeuralIL implementation [1]
+- replace spherical Bessel descriptors with a Message Passing Neural Network [2]
+- using Graph Attention Networks [3]
 - on a sparse molecular graph
 
 ## Going fast
@@ -136,7 +136,7 @@ ean > train_JAT_EAN.py     - minimal training script, val only
 ean > full_JAT_training.py - full script with val+test, logging, loading
 ean > configurations.json  - EAN dataset
 ```
-[Script to train JAT on EAN dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ean/graphs_v1.py)
+[Script to train JAT on EAN dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ean/train_JAT_EAN.py)
 
 - Ionic liquid: anion-cation pairs (salt) in liquid phase at room temperature
 - 15 EAN pairs → 225 atoms
@@ -148,13 +148,12 @@ ean > configurations.json  - EAN dataset
 # ANI-1 Dataset
 ```
 ani1 > todo
+pyanitools
 ```
 
 
 # References
 [1] Hadrián Montes-Campos, Jesús Carrete, Sebastian Bichelmaier, Luis M Varela, and Georg KH Madsen. A differentiable neural-network force field for ionic liquids. Journal of chemical information and modeling, 62(1):88–101, 2021
-https://pubs.acs.org/doi/10.1021/acs.jcim.1c01380
-
 
 [2] Justin Gilmer, Samuel S Schoenholz, Patrick F Riley, Oriol Vinyals, and George E Dahl. Neural message passing for quantum chemistry. In International conference on machine learning, pages 1263–1272. PMLR, 2017. 
 
@@ -163,10 +162,11 @@ https://pubs.acs.org/doi/10.1021/acs.jcim.1c01380
 [4] Brody, Shaked, Uri Alon, and Eran Yahav. "How attentive are graph attention networks?." arXiv preprint arXiv:2105.14491 (2021).
 
 
-## Useful links
-NeuralIL code available at https://github.com/Madsen-s-research-group/neuralil-public-releases
+# Useful links
+[NeuralIL code](https://github.com/Madsen-s-research-group/neuralil-public-releases) and [Paper](https://pubs.acs.org/doi/10.1021/acs.jcim.1c01380)
 
-LabML implementation of GATv2 https://nn.labml.ai/graphs/gatv2/
+[GATv2 LabML implementation](https://nn.labml.ai/graphs/gatv2/)
 
-Jraph https://jraph.readthedocs.io/
+[Jraph Docs](https://jraph.readthedocs.io/)
 
+[ANI-1 dataset](https://github.com/isayev/ANI1_dataset)

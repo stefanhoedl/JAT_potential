@@ -15,14 +15,6 @@
 
 import os
 import struct
-
-import numpy as onp
-#import scipy as sp
-#import scipy.integrate
-#import scipy.stats
-
-import flax
-import flax.traverse_util
 import jax
 import jax.numpy as jnp
 import jax.random

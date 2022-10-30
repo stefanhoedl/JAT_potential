@@ -4,11 +4,10 @@ import jax
 import jax.nn
 import jax.numpy as jnp
 from flax import linen as nn
-from flax.linen.initializers import orthogonal
+from flax.linen.initializers import orthogonal, lecun_normal
 
 from jraph._src.graph import GraphsTuple
 from jraph._src.utils import segment_softmax
-#from .segment_fx import segment_softmax
 
 from dataclasses import dataclass
 from flax.core.frozen_dict import FrozenDict
@@ -16,28 +15,37 @@ from typing import Any, Callable, Sequence, Tuple
 from datetime import datetime
 
 class JatCore(nn.Module):
-    """Graph Attention Network in JAX
-    applies GATv2 update layer N_LAYERS times
-    uses masked multi-headed self-attention with n_head and skip connections
+    """ Core of the JAT model, which incrementally refines the type embeddings
+        into expressive latent feature vectors, from which the the energy
+        prediction is obtained as the sum of individual atomic contributions.
+        
+        Every JAT layer applies one message passing step using the dynamic 
+        linear attention function (GATv2).
+        
+        Afterwards, the regression predictions (atomic contributions) 
+        are obtained from a [64:32:16:16:1] pyramidal readout head.
     
     Args:
-        layer_dims: dimension of query & key projection for each JAT layer
-        n_head: number of attention n_head
+        layer_dims: projection dimensionality of query and key, and thus output.
+            Using the same dimensionality as the previous layer avoids inial 
+            projection & skip projections. Try [48, 48, 48, 48] to start.
+        n_head: number of attention heads for multi-headed attention. 1 head is
+            recommended if periodic boundary conditions (cell_size) are used.
         
     Returns: 
-        (n_atoms * 1) atomic contribution to the potential energy
+        (n_atoms, 1) atomic contribution to the potential energy
     """
     layer_dims: Sequence[int]
     n_head: int = 1
 
     def setup(self):
         """ perform N message passing steps with dimensionalities layer_dims 
-            initializes N JAT layers with n_head attention n_head
+            initializes N JAT layers with n_head attention heads
             the last layer uses a dense(1) output without an activation function
         """
         
-        print(f'JAT layers dimensionality {self.layer_dims} with \
-            {self.n_head}-headed attention.')
+        print(f'JAT layers dimensionality {self.layer_dims} \
+             with {self.n_head}-headed attention.')
         
         layers = []
         for i in range(len(self.layer_dims)-1):
@@ -64,7 +72,20 @@ class JatCore(nn.Module):
         return out
 
     @nn.compact
-    def __call__(self, graphs_tuple, mask):
+    def __call__(self, graphs_tuple: GraphsTuple, mask: jnp.array):
+        """ 
+        Args:
+            graphs_tuple: edge list triplets of [senders, receivers, edges] 
+                         in sparse format, each of length (_mask_dim)
+                nodes:      (n_atoms, dim) node feature vector 
+                senders:    list of sender indices of length 
+                receivers:  list of receivers indices of length 
+                edges:      pairwise interatomic distance for sender-receiver
+            mask: Boolean mask of shape '_mask_dim', True if edge exists. 
+        
+        Returns: 
+            (n_atoms, 1) atomic contribution to the potential energy
+        """
         for step in range(len(self.layer_dims)):
             graphs_tuple = self.jat_layers[step](graphs_tuple, mask)
         
@@ -72,12 +93,20 @@ class JatCore(nn.Module):
         return contributions
 
 class JatLayer(nn.Module):
+    """ Initializes a single JAT layer, which performs one message passing step. 
+        
+    Args:
+        dim: dimension of query & key projection for each JAT layer
+        n_head: number of attention heads
+        readout: If True, does not apply LayerNorm (for the final JAT layer)
+        kernel_init: initialization, lecun_normal and orthogonal work well. 
+    """
     dim: int
     n_head: int
     readout: bool
     kernel_init: Callable = orthogonal(column_axis = -2)
 
-    def skip_proj(self, nodes):
+    def skip_proj(self, nodes: jnp.array):
         """ projects old nodes to new dimensionality 
             for element-wise addition of skip connection """
         
@@ -85,10 +114,8 @@ class JatLayer(nn.Module):
             nodes = jnp.stack([nodes], axis=-2)
         
         if nodes.shape[-1] != self.dim:
-            nodes = nn.DenseGeneral((self.n_head, self.dim),
-                axis=(-2,-1), use_bias=False, 
-                kernel_init = self.kernel_init
-                )(nodes)
+            nodes = nn.DenseGeneral((self.n_head, self.dim), axis=(-2,-1), 
+                    use_bias=False, kernel_init = self.kernel_init)(nodes)
 
         return nodes
     
@@ -101,8 +128,10 @@ class JatLayer(nn.Module):
                 query:  (_mask_dim, dim) array of sender features
                 key:    (_mask_dim, dim) array of receiver features
                 edges:  (_mask_dim, 1) array of pairwise interatomic distances
+            
             Returns:
-                (_mask_dim, 1) vector of attention weights
+                attn_weights: (_mask_dim, 1) vector of attention weights
+                    (unnormalized logits e_ij)
         """
         features = nn.swish(query + key)
         
@@ -115,7 +144,7 @@ class JatLayer(nn.Module):
         features = jnp.concatenate([features, edges], axis=-1)
 
         attn_weights = nn.DenseGeneral((self.n_head,1), axis=(-2,-1), \
-                use_bias=False, kernel_init = self.kernel_init)(features)
+                       use_bias=False, kernel_init = self.kernel_init)(features)
         return attn_weights
 
     def _ApplyJAT(self, graph: GraphsTuple, mask: jnp.array):
@@ -142,7 +171,7 @@ class JatLayer(nn.Module):
         # query & key projection: nodes features to layer_dims. 
         querys = nn.DenseGeneral((self.n_head, self.dim), axis=(-2,-1), \
                     use_bias=False, kernel_init = self.kernel_init)(nodes)
-        keys =   nn.DenseGeneral((self.n_head, self.dim), axis=(-2,-1), \
+        keys   = nn.DenseGeneral((self.n_head, self.dim), axis=(-2,-1), \
                     use_bias=False, kernel_init = self.kernel_init)(nodes)
         
         # Lift projected sender & receiver features using edge list 
@@ -223,13 +252,13 @@ class GraphGenerator:
             coordinates: An (n_atoms, 3) array of atomic positions.
 
         Returns:
-            GraphsTuple: edge list triplet of [senders, receivers, edges] 
+            GraphsTuple: edge list triplets of [senders, receivers, edges] 
                          in sparse format, each of length (_mask_dim)
                 nodes:      (n_atoms, dim) node feature vector 
                 senders:    list of sender indices of length 
                 receivers:  list of receivers indices of length 
                 edges:      pairwise interatomic distance for sender-receiver
-            mask: Boolean mask of shape '_mask_dim', True if edge exists, 
+            mask: Boolean mask of shape '_mask_dim', True if edge exists.
         """
         cutoff2 = self.cutoff * self.cutoff
         delta = coordinates - coordinates[:, jnp.newaxis, :]
@@ -282,8 +311,7 @@ class JatModel(nn.Module):
 
     Args:
         n_types: The number of atomic types in the system.
-        embed_d: The dimension of the embedding vector to be mixed with the
-            descriptors.
+        embed_d: The dimension of the embedding vector. 
         graph_generator: The function mapping atomic coordinates to a 
             GraphsTuple which represents the system using a sparse edge list.
         core_model: The model that takes the generated graph and embedded 
@@ -424,8 +452,7 @@ if __name__ == "__main__":
     config.update("jax_debug_nans", True) 
 
     N_PAIR = 15
-    CONFIGS_DFT = "./configurations.json" 
-    PICKLE_FILE = "./ean/models/flaxGraphs_big.pickle"
+    CONFIGS_DFT = "../../ean/configurations.json" 
     
     cells = []
     positions = []
@@ -444,8 +471,8 @@ if __name__ == "__main__":
                 forces.append(json_data["Forces"])
     
     GRAPH_CUT = 5
-    EMBED_D = 32
-    LAYER_DIMS = [32, 32, 32, 32, 32]
+    EMBED_D = 48
+    LAYER_DIMS = [48, 48, 48, 48]
     N_HEADS = 1
 
     type_cation = ["N", "H", "H", "H", "C", "H", "H", "C", "H", "H", "H"]
@@ -492,6 +519,6 @@ if __name__ == "__main__":
                 method=JatModel.calc_forces
             )
 
-    mse = jnp.mean( (pred - forces[0])**2 )
-    print(f"{mse} MSE ")
-    print(f"{pred - forces[0]} delta")
+    rmse = jnp.sqrt( jnp.mean( (pred - forces[0])**2 ) )
+    mae = jnp.mean( (pred - forces[0]) )
+    print(f"MAE {mae} eV / Å,  RMSE {rmse} eV / Å, ")

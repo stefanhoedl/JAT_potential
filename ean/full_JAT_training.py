@@ -12,10 +12,10 @@ import jax.numpy as jnp
 import flax
 
 if os.getcwd().startswith('/workspace/'):
-    sys.path.append('/workspace/bessel-nn-potentials/src')
+    sys.path.append('/workspace/JAT_potential/src')
     log_wandb = True
 else:
-    sys.path.append('/home/stefan/tu/bessel-nn-potentials/src')
+    sys.path.append('/home/stefan/tu/JAT_potential/src')
     log_wandb = True
 
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo

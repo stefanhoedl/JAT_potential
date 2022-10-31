@@ -1,4 +1,4 @@
-# Copyright 2019-2021 The NeuralIL contributors
+# Copyright 2022 Stefan Hödl
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.core import setup
-from setuptools.command.install import install
+from setuptools import setup, find_packages
 
 setup(
     name="JAT",
@@ -21,31 +20,23 @@ setup(
     description="Jraph Attention Networks: an attention-based atomistic deep learning potential",
     author="Stefan Hödl",
     author_email="stefano.hoedl@gmail.com",
-    packages=[
-        "jat"
-    ],
+    python_requires=">=3.8",
+    packages=find_packages(where="./src/jat"),
     install_requires=[
-        "jax",
-        "jaxlib",
-        "jraph",
-        "wandb",
-        "flax",
-        "optax",
-        "numpy",
-        "tqdm",
-        "h5py",
-        "ase"
+        "jax >= 0.3.10",
+        "jaxlib >= 0.3.10",
+        "jraph >= 0.0.5.dev0",
+        "wandb >= 0.13.0",
+        "flax >= 0.4.2",
+        "optax >= 0.1.2",
+        "ase >= 3.22.0"
+        "numpy >= 1.19.5",
+        "tqdm >= 4.61.1",
+        "h5py >= 3.1.0",
     ]
 )
 
 # jaxlib + cuda:
 # https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.10+cuda11.cudnn805-cp38-none-manylinux2014_x86_64.whl
-
 # jax                               0.3.10
 # jaxlib                            0.3.10+cuda11.cudnn805
-# flax                              0.4.2
-# optax                             0.1.2
-# ase                               3.22.0
-# jraph                             0.0.5.dev0
-# wandb                             0.13.0
-# networkx                          2.5.1

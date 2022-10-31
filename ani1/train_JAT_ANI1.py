@@ -3,11 +3,11 @@ import sys
 import os
 if os.getcwd().startswith('/workspace/'):
     ## docker on rig
-    sys.path.append('/workspace/bessel-nn-potentials/src')
+    sys.path.append('/workspace/JAT_potential/src')
     log_wandb = True
 else:
     ## local
-    sys.path.append('/home/stefan/tu/bessel-nn-potentials/src')
+    sys.path.append('/home/stefan/tu/JAT_potential/src')
     log_wandb = False
 
 import pickle
@@ -113,7 +113,7 @@ for file_num in SUBSET:
                 continue
         
         # Draw 5% of conformation indices (or CONF_FRAC %). 
-        # Allocate to test set with probability TEST_FRACTION, else to train&val set.
+        # Allocate to test set with prob TEST_FRACTION, else to train&val set.
         idx = jax.random.choice(data_rng, nconfigs, 
             shape=[round(nconfigs*CONF_FRAC)+1], replace=False)
         if jax.random.choice(data_rng, 100) >= TEST_FRACTION*100:

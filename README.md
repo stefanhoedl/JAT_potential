@@ -129,6 +129,19 @@ src > jat_model.py > JatLayer.attention()
 </p>
 Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
 
+# Setup
+Clone the repository, create an environment using conda and install dependencies using pip.
+
+```
+conda create -e JAT
+conda activate JAT
+cd JAT_potential
+pip install .
+```
+
+If you have a GPU, install a matching CUDA-supported jaxlib version: 
+
+[Download jaxlib 0.3.10+cuda11.cudnn805 here](https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.10+cuda11.cudnn805-cp38-none-manylinux2014_x86_64.whl) with matching jax version (here 0.3.10)
 
 # EAN Dataset
 ```
@@ -140,6 +153,7 @@ ean > configurations.json  - EAN dataset
 
 - Ionic liquid: anion-cation pairs (salt) in liquid phase at room temperature
 - 15 EAN pairs → 225 atoms
+- dataset copyrights from NeuralIL authors
 - sampled from OPLS-AA MD trajectory
 - reference energy & forces from DFT
 - 741 configurations
@@ -147,9 +161,15 @@ ean > configurations.json  - EAN dataset
 
 # ANI-1 Dataset
 ```
-ani1 > todo
-pyanitools
+ani1 > train_JAT_ANI1.py   - full ANI-1 training script
+ani1 > ANI-1_release       - ANI-1 data directory
+
 ```
+[Script to train JAT on ANI-1 dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ani1/train_JAT_ANI1.py)
+
+[TODO ANI1 dataset download link + unzip]()
+
+
 
 
 # References

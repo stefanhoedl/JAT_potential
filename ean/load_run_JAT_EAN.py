@@ -10,7 +10,7 @@ import sys
 import pickle
 from collections import OrderedDict
 
-sys.path.append('/workspace/bessel-nn-potentials/src')
+sys.path.append('/workspace/JAT_potential/src')
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
 
 N_PAIR = 15

@@ -19,11 +19,11 @@ else:
     log_wandb = True
 
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
-from jat.training import * 
+from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \
     get_max_number_of_neighbors
 
-## Training Config
+# Training Config
 TRAINING_FRACTION = .865
 N_BATCH = 8
 N_EVAL_BATCH = 32
@@ -33,14 +33,14 @@ LR_MIN, LR_MAX, LR_END = 0.5e-4, 0.3e-3, 0.5e-6
 N_EPOCHS = 2001
 N_PAIR = 15
 
-## JAT MODEL
+# JAT MODEL
 LAYER_DIMS = [48, 48, 48, 48, 48, 48, 48]
 GRAPH_CUT = 5
 EMBED_D = 48
 N_HEADS = 1
 
 instance_code = draw_urandom_int32()
-CONFIGS_DFT = "./configurations.json" 
+CONFIGS_DFT = "./configurations.json"
 PICKLE_FILE = f"./ean/models/JAT_EAN15_{instance_code}.pickle"
 
 type_cation = ["N", "H", "H", "H", "C", "H", "H", "C", "H", "H", "H"]
@@ -61,7 +61,7 @@ forces = []
 
 with open(
     (pathlib.Path(__file__).parent /
-    CONFIGS_DFT).resolve(), "r") as json_dft: 
+        CONFIGS_DFT).resolve(), "r") as json_dft:
     for line in json_dft:
         json_data = json.loads(line)
         cells.append(jnp.diag(jnp.array(json_data["Cell-Size"])))
@@ -72,8 +72,8 @@ with open(
 n_configurations = len(positions)
 types = jnp.array([types for i in range(n_configurations)])
 
-n_train = int(TRAINING_FRACTION * n_configurations)
-n_validate = (n_configurations - n_train) //2
+n_train = int(TRAINING_FRACTION*n_configurations)
+n_validate = (n_configurations - n_train) // 2
 n_test = n_configurations - n_train - n_validate
 print(f"\t- {n_train} will be used for training")
 print(f"\t- {n_validate} will be used for validation")
@@ -91,8 +91,13 @@ forces = shuffle(forces)
 
 def split_array(in_array):
     "Split an array in training and validation sections."
-    return jnp.split(in_array, (n_train, n_train + n_validate, 
-        n_train + n_validate + n_test))[:3]
+    return jnp.split(
+                in_array, (
+                    n_train,
+                    n_train + n_validate,
+                    n_train + n_validate + n_test
+                ))[:3]
+
 
 cells_train, cells_validate, cells_test = split_array(cells)
 positions_train, positions_validate, positions_test = split_array(positions)
@@ -105,22 +110,27 @@ for p, t, c in zip(positions, types, cells):
     graph_neighbors = max(
         graph_neighbors,
         get_max_number_of_neighbors(
-            jnp.asarray(p), 
-            jnp.asarray(t), 
-            GRAPH_CUT, 
-            jnp.asarray(c)
-        )
-    )
-print(f"Maximum of {graph_neighbors} neighbors considered for Graph generation")
+            jnp.asarray(p),
+            jnp.asarray(t),
+            GRAPH_CUT,
+            jnp.asarray(c)))
+print(f"Maximum of {graph_neighbors} neighbors for Graph generation")
 
-core_model = JatCore(layer_dims = LAYER_DIMS, 
-    n_head = N_HEADS)
-graph_gen = GraphGenerator(n_atoms, 
-    GRAPH_CUT, 
+core_model = JatCore(
+    layer_dims=LAYER_DIMS,
+    n_head=N_HEADS
+)
+graph_gen = GraphGenerator(
+    n_atoms,
+    GRAPH_CUT,
     cells_train[0],
-    graph_neighbors)
+    graph_neighbors
+)
 dynamics_model = JatModel(
-    n_types, EMBED_D, graph_gen, core_model
+    n_types,
+    EMBED_D,
+    graph_gen,
+    core_model
 )
 
 # Create the minimizer.
@@ -146,30 +156,31 @@ log_cosh = create_log_cosh(LOG_COSH_PARAMETER)
 if log_wandb:
     import wandb
     wandb.init(project='il-jat-EAN-production', config={
-    "N_EPOCHS" : N_EPOCHS,
-    "N_PAIR":N_PAIR,
-    "TRAINING_FRACTION" : TRAINING_FRACTION,
-    "GRAPH_CUT": GRAPH_CUT,
-    "PICKLE_FILE" : PICKLE_FILE,
-    "N_BATCH": N_BATCH,
-    "LOG_COSH_PARAMETER": LOG_COSH_PARAMETER,
-    "SEED": SEED,
-    "layer_dims": LAYER_DIMS,
-    "N_HEADS": N_HEADS,
-    "LR_MIN":LR_MIN,
-    "LR_MAX": LR_MAX,
-    "LR_END":LR_END,
-    "instance": instance_code,
+        "N_EPOCHS": N_EPOCHS,
+        "N_PAIR": N_PAIR,
+        "TRAINING_FRACTION": TRAINING_FRACTION,
+        "GRAPH_CUT": GRAPH_CUT,
+        "PICKLE_FILE": PICKLE_FILE,
+        "N_BATCH": N_BATCH,
+        "LOG_COSH_PARAMETER": LOG_COSH_PARAMETER,
+        "SEED": SEED,
+        "layer_dims": LAYER_DIMS,
+        "N_HEADS": N_HEADS,
+        "LR_MIN": LR_MIN,
+        "LR_MAX": LR_MAX,
+        "LR_END": LR_END,
+        "instance": instance_code,
     })
     config = wandb.config
 
 # Get flattened key-value list of trainable parameters.
-flat_params = {'/'.join(k[-2:]): v.shape for k, v in \
-    flax.traverse_util.flatten_dict(flax.core.unfreeze(model_params)).items()}
+flat_params = {'/'.join(k[-2:]): v.shape for k, v in
+                    flax.traverse_util.flatten_dict(
+                        flax.core.unfreeze(model_params)).items()}
 print(flat_params)
 
 def calc_loss_contribution(pred_energy, pred_forces, obs_energy, obs_forces):
-    "Return the log-cosh of the difference between predicted and actual forces."
+    "Return the log-cosh of the difference between predicted and actual forces"
     delta_forces = obs_forces - pred_forces
     return log_cosh(delta_forces).mean()
 
@@ -189,7 +200,7 @@ training_epoch = create_training_epoch(
     N_BATCH,
     training_step,
     epoch_rng,
-    log_wandb = True
+    log_wandb=True
 )
 
 # Create a dictionary of validation statistics that we want calculated.
@@ -232,25 +243,35 @@ test_step = create_validation_step(
 
 min_mae = jnp.inf
 for i in range(N_EPOCHS):
-    # Reset the training schedule.
+    # Reset the training schedule and run a full epoch.
     optimizer_state = reset_one_cycle_minimizer(optimizer_state)
-    # Run a full epoch.
     optimizer_state, model_params = training_epoch(
-        optimizer_state, model_params
-    )
+        optimizer_state, model_params)
+
     # Evaluate the results.
     statistics = validation_step(model_params)
     mae = statistics["force_MAE"]
     rmse = statistics["force_RMSE"]
-    # Print the relevant statistics.
+    test_statistics = test_step(model_params)
+    test_mae = test_statistics["force_MAE"]
+    test_rmse = test_statistics["force_RMSE"]
 
+    # Print the relevant statistics.
+    print(
+        f"VAL  RMSE = {rmse} {validation_units['force_RMSE']}. "
+        f"VAL  MAE  = {mae} {validation_units['force_MAE']}."
+        f"TEST RMSE = {test_rmse} {validation_units['force_RMSE']}. "
+        f"TEST MAE  = {test_mae} {validation_units['force_MAE']}."
+    )
     if log_wandb:
         wandb.log({"rmse": rmse.copy(), "mae": mae.copy()}, commit=False)
-        
+        wandb.log({"test_rmse": test_rmse.copy(), "test_mae": test_mae.copy()})
+
     # Save the state only if the validation MAE is minimal.
     if mae < min_mae:
+        min_mae = mae
         model_info = JATModelInfo(
-            model_name="IL_JAT",
+            model_name="JAT",
             model_details=f"EAN {N_PAIR}",
             timestamp=datetime.now(),
             graph_cut=GRAPH_CUT,
@@ -259,57 +280,45 @@ for i in range(N_EPOCHS):
             embed_d=EMBED_D,
             layer_dims=LAYER_DIMS,
             n_head=N_HEADS,
-            n_atoms = N_PAIR * 15,
+            n_atoms=N_PAIR*15,
             constructor_kwargs={"cell_size": cells_train[0]},
             random_seed=SEED,
             params=flax.serialization.to_state_dict(model_params),
-            specific_info=None
-        )
+            specific_info=None)
         with open(PICKLE_FILE, "wb") as f:
-            #print("- Saving the most recent state")
             pickle.dump(model_info, f, protocol=5)
-        print(f"woooo {mae} mae & {rmse} rmse")
-        min_mae = mae
-    
-    # Periodically save the best model.
-    if i % 250 == 0 and i>0:
-        PICKLE_EPOCH_FILE = f"./ean/models/JAT_EAN15_{instance_code}_epoch{i+1}.pickle"
-        with open(PICKLE_EPOCH_FILE, "wb") as f:
-                pickle.dump(model_info, f, protocol=5)
-    
+        print(f"woooo {mae:.4f} mae & {rmse:.4f} rmse")
 
-    test_statistics = test_step(model_params)
-    test_mae = test_statistics["force_MAE"]
-    test_rmse = test_statistics["force_RMSE"]
-    print(
-        f"VALIDATION: \t"
-        f"RMSE = {rmse} {validation_units['force_RMSE']}. "
-        f"MAE = {mae} {validation_units['force_MAE']}."
-    )
-    print(
-        f"TEST: \t\t"
-        f"RMSE = {test_rmse} {validation_units['force_RMSE']}. "
-        f"MAE = {test_mae} {validation_units['force_MAE']}."
-    )
-    if log_wandb:
-        wandb.log({"test_rmse": test_rmse.copy(), "test_mae": test_mae.copy()})
+    # Save the best model every 250 epochs
+    if i % 250 == 249 and i > 0:
+        PICKLE_EPOCH = f"./ean/models/JAT_EAN15_{instance_code}_ep{i+1}.pickle"
+        with open(PICKLE_EPOCH, "wb") as f:
+            pickle.dump(model_info, f, protocol=5)
 
-# load params to verify
+
+###################################################
+# # Load trained model & evaluate test set once again
 with open(PICKLE_FILE, "rb") as f:
     model_info = pickle.load(f)
 
-core_model = JatCore(layer_dims = model_info.layer_dims, 
-                    n_head=model_info.n_head)
-graph_gen = GraphGenerator(model_info.n_atoms, 
-                    model_info.graph_cut, 
-                    model_info.constructor_kwargs["cell_size"], 
-                    model_info.graph_neighbors)
+core_model = JatCore(
+    layer_dims=model_info.layer_dims,
+    n_head=model_info.n_head
+)
+graph_gen = GraphGenerator(
+    model_info.n_atoms,
+    model_info.graph_cut,
+    model_info.constructor_kwargs["cell_size"],
+    model_info.graph_neighbors
+)
 dynamics_model = JatModel(
-                    len(model_info.sorted_elements), 
-                    model_info.embed_d, 
-                    graph_gen, 
-                    core_model)
+    len(model_info.sorted_elements),
+    model_info.embed_d,
+    graph_gen,
+    core_model
+)
 
+# Initialize model weights
 template_params = dynamics_model.init(
     init_rng,
     jnp.zeros((model_info.n_atoms, 3), dtype=jnp.float32),
@@ -317,7 +326,9 @@ template_params = dynamics_model.init(
     jnp.eye(3),
     method=JatModel.calc_forces
 )
-model_params = flax.serialization.from_state_dict(template_params, 
+# Load best model parameters to model
+model_params = flax.serialization.from_state_dict(
+    template_params,
     model_info.params)
 
 statistics = validation_step(model_params)
@@ -326,13 +337,11 @@ rmse = statistics["force_RMSE"]
 test_statistics = test_step(model_params)
 test_mae = test_statistics["force_MAE"]
 test_rmse = test_statistics["force_RMSE"]
+
 print(
-        f"Validation set statistics with loaded parameters: \n"
-        f"RMSE = {rmse} {validation_units['force_RMSE']}. "
-        f"MAE = {mae} {validation_units['force_MAE']}."
-    )
-print(
-        f"Test set statistics with loaded parameters: \n"
-        f"RMSE = {test_rmse} {validation_units['force_RMSE']}. "
-        f"MAE = {test_mae} {validation_units['force_MAE']}."
-    )
+    f"Validation & Test set statistics with loaded parameters: \n"
+    f"VAL RMSE = {rmse:.4f} {validation_units['force_RMSE']}. \n"
+    f"VAL MAE = {mae:.4f} {validation_units['force_MAE']}. \n"
+    f"TEST RMSE = {test_rmse:.4f} {validation_units['force_RMSE']}. \n"
+    f"TEST = {test_mae:.4f} {validation_units['force_MAE']}."
+)

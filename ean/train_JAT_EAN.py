@@ -223,11 +223,10 @@ for i in range(N_EPOCHS):
         )
         with open(PICKLE_FILE, "wb") as f:
             pickle.dump(model_info, f, protocol=5)
-        print(f"woooo {mae} mae & {rmse} rmse")
+        print(f"woooo {mae:.4f} mae & {rmse:.4f} rmse")
         min_mae = mae
     
     print(
-        f"VALIDATION: \t"
-        f"RMSE = {rmse} {validation_units['force_RMSE']}. "
-        f"MAE = {mae} {validation_units['force_MAE']}."
+        f"VAL RMSE = {rmse:.4f} {validation_units['force_RMSE']}. \n"
+        f"VAL MAE = {mae:.4f} {validation_units['force_MAE']}."
     )

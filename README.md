@@ -86,8 +86,8 @@ ___
 
 
 # JAT architecture
+## [JatCore](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L17) and [JatModel](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L319)
 
-## [JAT Core](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L17)
 ```
 src > jat_model.py > JatCore
 src > jat_model.py > JatModel
@@ -100,7 +100,9 @@ Visualization of the entire JAT architecture. Using the positions and species (t
 
 The readout head transform the features $h^T$ using projection, nonlinearity and normalization layers into the energy contribution for each individual atom. The JAT model's prediction for the potential energy $E_{pot}$ is obtained as the sum over all atoms' contributions, while the forces $\textbf{f}$ are obtained as the model's derivative with respect to the atomic positions.
 
-## [Graph Generator](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L219)
+JatModel is a Wrapper around the JatCore model to calculate the potential energy (`model.calc_potential_energy`) or atomic forces (`model.calc_forces`).
+
+## [Graph Generator](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L231)
 ```
 src > jat_model.py > GraphGenerator > make_graph
 ```
@@ -111,7 +113,7 @@ src > jat_model.py > GraphGenerator > make_graph
 
 Visualization of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $L^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list* in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
 
-## [JAT Layer](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L95)
+## [JAT Layer](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L97)
 ```
 src > jat_model.py > JatLayer
 ```
@@ -121,7 +123,7 @@ src > jat_model.py > JatLayer
 
 Visualization of a single JAT layer, which performs a single round of message passing to update the node feature vectors. The features $\textbf{h}^{t}$ at step $t$ are projected into senders and receivers, and for every pair in the edge list a weight $\alpha$ is calculated using the attention mechanism. The messages are calculated as the element-wise multiplication of the sender features and attention weights $\alpha$. These messages are aggregated to each receiver using a segment sum and transformed with a nonlinearity, skip connection and layer normalization to obtain the updated node features $\textbf{h}^{t+1}$. These are fed into the next JAT layer to repeat the message passing procedure for multiple rounds.
 
-## [Linear dynamic attention](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L122)
+## [Linear dynamic attention](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L126)
 ```
 src > jat_model.py > JatLayer.attention()
 ```
@@ -129,6 +131,12 @@ src > jat_model.py > JatLayer.attention()
 <img src="figs/vis_attention.png" width="400" align="center"/>
 </p>
 Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
+
+## [JatModel](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L319)
+```
+src > jat_model.py > JatModel
+```
+Wrapper model around JatCore to calculate energies (`model.calc_potential_energy`) and forces (`model.calc_forces`).
 
 # Setup
 Clone the repository, create an environment using conda and install dependencies using pip.

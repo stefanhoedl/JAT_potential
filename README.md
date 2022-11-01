@@ -1,18 +1,21 @@
 # Sparse graph attention networks as efficient ionic liquid potentials
 Master thesis: Jraph Attention neTworks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
 
-- predict the potential energy and atomic forces of molecules
-- extends the NeuralIL architecture and implementation
+- to predict the potential energy and atomic forces of molecules
+- operates within the message passing neural networks (MPNN) framework [2]
+- extends the NeuralIL [1] architecture and implementation
 - adapts Graph Attention Networks (GAT) to replace fingerprint features
-- operates within the message passing neural networks (MPNN) framework
 
-Performs multiple message passing steps by
+The JAT architecture takes as input the 3N Cartesian coordinates and N types (atomic species) for a molecule with N atoms. With these, the model
 
-- generating a sparse molecular graph
-- using dynamic linear attention (GATv2) as the message function
-    (masked multi-head self-attention)
-- weighted sum of features + skip connection as the update function
-- pyramidal regression head as readout function
+- generates a sparse molecular graph
+- iteratively refines the type embeddings h^0 with multiple message passing layers
+- using the dynamic linear attention function (GATv2) [4] as the message function
+
+    (masked multi-headed self-attention),
+- and a weighted sum of features and skip connection as the update function,
+- a pyramidal regression head as the readout function
+- and finally takes a sum over all atomic contributions to obtain the potential energy. 
 
 <p align="center">
 <img src="figs/jatOnlyModel.png" align="center"/>
@@ -22,7 +25,7 @@ Performs multiple message passing steps by
 # Architecture overview & background
 The architecture uses message passing neural networks (MPNN) [2] with an attentional update function (linear dynamic attention, GATv2) [4] by adapting Graph Attention Networks (GAT) [3] to the domain of computational chemistry. The name JAT (JraphAttentionNetworks) derives from adapting Graph Attention Networks in JAX and builds upon the Jraph library. 
 
-The JAT code and architecture was developed during the master's thesis at TU Vienna with the department of Theoretical Materials Chemistry under supervision of Dr. Jesús Carrete Montaña. The NeuralIL^1 implementation serves as a baseline implementation and reuses code to train the model.
+The JAT code and architecture was developed during the master's thesis at TU Vienna with the department of Theoretical Materials Chemistry under supervision of Dr. Jesús Carrete Montaña. The NeuralIL [1] implementation serves as a baseline implementation and reuses code to train the model.
 
 In this thesis, I've
 
@@ -84,7 +87,7 @@ ___
 - locality for MD parallelization
 - smooth nonlinearity (Swish-1) and loss function (log-cosh)
 
-
+___
 # JAT architecture
 ## [JatCore](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L17) and [JatModel](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L319)
 
@@ -111,7 +114,7 @@ src > jat_model.py > GraphGenerator > make_graph
 <img src="figs/vis_graphGen.png" width="400" align="center"/>
 </p>
 
-Visualization of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $L^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list* in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
+Visualization of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $\textrm{L}^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list* in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
 
 ## [JAT Layer](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L97)
 ```
@@ -121,7 +124,7 @@ src > jat_model.py > JatLayer
 <img src="figs/vis_JatLayer.png"align="center"/>
 </p>
 
-Visualization of a single JAT layer, which performs a single round of message passing to update the node feature vectors. The features $\textbf{h}^{t}$ at step $t$ are projected into senders and receivers, and for every pair in the edge list a weight $\alpha$ is calculated using the attention mechanism. The messages are calculated as the element-wise multiplication of the sender features and attention weights $\alpha$. These messages are aggregated to each receiver using a segment sum and transformed with a nonlinearity, skip connection and layer normalization to obtain the updated node features $\textbf{h}^{t+1}$. These are fed into the next JAT layer to repeat the message passing procedure for multiple rounds.
+Visualization of a single JAT layer, which performs a single round of message passing to update the node feature vectors. The features $h^{t}$ at step $t$ are projected into senders and receivers, and for every pair in the edge list a weight $\alpha$ is calculated using the attention mechanism. The messages are calculated as the element-wise multiplication of the sender features and attention weights $\alpha$. These messages are aggregated to each receiver using a segment sum and transformed with a nonlinearity, skip connection and layer normalization to obtain the updated node features $h^{t+1}$. These are fed into the next JAT layer to repeat the message passing procedure for multiple rounds.
 
 ## [Linear dynamic attention](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L126)
 ```
@@ -131,13 +134,7 @@ src > jat_model.py > JatLayer.attention()
 <img src="figs/vis_attention.png" width="400" align="center"/>
 </p>
 Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
-
-## [JatModel](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L319)
-```
-src > jat_model.py > JatModel
-```
-Wrapper model around JatCore to calculate energies (`model.calc_potential_energy`) and forces (`model.calc_forces`).
-
+___
 # Setup
 Clone the repository, create an environment using conda and install dependencies using pip.
 
@@ -148,6 +145,7 @@ conda create -e JAT
 conda activate JAT
 pip install .
 ```
+After successful installation, run scripts with `python3 ean/train_JAT_EAN.py`.
 
 If you have a GPU, install a matching CUDA-supported jaxlib version: 
 

@@ -1,13 +1,5 @@
 #!/usr/bin/env python
 import sys
-import os
-if os.getcwd().startswith('/workspace/'):
-    sys.path.append('/workspace/JAT_potential/src')
-    log_wandb = True
-else:
-    sys.path.append('/home/stefan/tu/JAT_potential/src')
-    log_wandb = False
-
 import pickle
 from collections import OrderedDict
 import jax
@@ -23,6 +15,8 @@ from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
 from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \
     get_max_number_of_neighbors
+
+log_wandb = True
 
 # Training config
 N_BATCH = 32

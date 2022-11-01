@@ -11,17 +11,12 @@ import jax
 import jax.numpy as jnp
 import flax
 
-if os.getcwd().startswith('/workspace/'):
-    sys.path.append('/workspace/JAT_potential/src')
-    log_wandb = True
-else:
-    sys.path.append('/home/stefan/tu/JAT_potential/src')
-    log_wandb = True
-
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
 from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \
     get_max_number_of_neighbors
+
+log_wandb = True
 
 # Training Config
 TRAINING_FRACTION = .865

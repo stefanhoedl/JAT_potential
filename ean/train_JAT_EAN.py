@@ -10,7 +10,7 @@ import jax
 import jax.numpy as jnp
 import flax
 
-sys.path.append('/workspace/bessel-nn-potentials/src')
+# sys.path.append('/workspace/bessel-nn-potentials/src')
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
 from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \

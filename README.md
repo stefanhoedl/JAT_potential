@@ -39,6 +39,8 @@ In this thesis, I've
 # Overview
 [Also available as a poster here!](https://github.com/stefanhoedl/JAT_potential/blob/main/figs/JAT_thesis_poster.pdf)
 
+## Problem context: What's a potential?
+
 - Domain:        Computational chemistry
 - Goal:           Predict the energy of molecules
 - Task:           Learn the potential energy surface (PES)
@@ -135,6 +137,7 @@ src > jat_model.py > JatLayer.attention()
 </p>
 Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
 ___
+
 # Setup
 Clone the repository, create an environment using conda and install dependencies using pip.
 
@@ -200,7 +203,7 @@ If you find this code useful, please cite the following:
 ```
 @misc{Hödl2022JAT,
   author = {Hödl, Stefan},
-  title = {JAT potential: master thesis},
+  title = {Sparse graph attention networks as efficient ionic liquid potentials},
   year = {2022},
   publisher = {Technical University Vienna},
   journal = {GitHub repository},

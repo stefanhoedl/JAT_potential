@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2022 Stefan Hödl
 import sys
-import os
 import pathlib
 import json
 import pickle
@@ -11,13 +10,13 @@ import jax
 import jax.numpy as jnp
 import flax
 
-sys.path.append('/workspace/JAT_potential/src')
+sys.path.append('/workspace/bessel-nn-potentials/src')
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
-from jat.training import * 
+from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \
     get_max_number_of_neighbors
 
-## Training Config
+# Training Config
 TRAINING_FRACTION = .9
 N_BATCH = 8
 N_EVAL_BATCH = 32
@@ -27,14 +26,14 @@ LR_MIN, LR_MAX, LR_END = 5e-4, 3e-3, 5e-6
 N_EPOCHS = 501
 N_PAIR = 15
 
-## JAT MODEL
+# JAT MODEL
 LAYER_DIMS = [48, 48, 48, 48]
 GRAPH_CUT = 5
 EMBED_D = 48
 N_HEADS = 1
 
 instance_code = draw_urandom_int32()
-CONFIGS_DFT = "./configurations.json" 
+CONFIGS_DFT = "./configurations.json"
 PICKLE_FILE = f"./ean/models/JAT_EAN15_{instance_code}.pickle"
 
 type_cation = ["N", "H", "H", "H", "C", "H", "H", "C", "H", "H", "H"]
@@ -55,7 +54,7 @@ forces = []
 
 with open(
     (pathlib.Path(__file__).parent /
-    CONFIGS_DFT).resolve(), "r") as json_dft: 
+        CONFIGS_DFT).resolve(), "r") as json_dft:
     for line in json_dft:
         json_data = json.loads(line)
         cells.append(jnp.diag(jnp.array(json_data["Cell-Size"])))
@@ -83,7 +82,12 @@ forces = shuffle(forces)
 
 def split_array(in_array):
     "Split an array in training and validation sections."
-    return jnp.split(in_array, (n_train, n_train + n_validate))[:2]
+    return jnp.split(
+                in_array, (
+                    n_train,
+                    n_train + n_validate
+                ))[:2]
+
 
 cells_train, cells_validate = split_array(cells)
 positions_train, positions_validate = split_array(positions)
@@ -96,29 +100,31 @@ for p, t, c in zip(positions, types, cells):
     graph_neighbors = max(
         graph_neighbors,
         get_max_number_of_neighbors(
-            jnp.asarray(p), 
-            jnp.asarray(t), 
-            GRAPH_CUT, 
-            jnp.asarray(c)
-        )
-    )
-print(f"Maximum of {graph_neighbors} neighbors considered for Graph generation")
+            jnp.asarray(p),
+            jnp.asarray(t),
+            GRAPH_CUT,
+            jnp.asarray(c)))
+print(f"Maximum of {graph_neighbors} neighbors for Graph generation")
 
-core_model = JatCore(layer_dims = LAYER_DIMS, 
-    n_head = N_HEADS)
-graph_gen = GraphGenerator(n_atoms, 
-    GRAPH_CUT, 
+# Call JAT model & components constructors
+core_model = JatCore(
+    layer_dims=LAYER_DIMS,
+    n_head=N_HEADS
+)
+graph_gen = GraphGenerator(
+    n_atoms,
+    GRAPH_CUT,
     cells_train[0],
-    graph_neighbors)
+    graph_neighbors
+)
 dynamics_model = JatModel(
-    n_types, EMBED_D, graph_gen, core_model
+    n_types,
+    EMBED_D,
+    graph_gen,
+    core_model
 )
 
-# Create the minimizer.
-optimizer = create_one_cycle_minimizer(
-    n_train // N_BATCH, LR_MIN, LR_MAX, LR_END
-)
-
+# Initialize the JAT model parameters
 rng, init_rng = jax.random.split(rng)
 model_params = dynamics_model.init(
     init_rng,
@@ -128,6 +134,10 @@ model_params = dynamics_model.init(
     method=JatModel.calc_forces
 )
 
+# Create and initialize the one cycle minimizer
+optimizer = create_one_cycle_minimizer(
+    n_train // N_BATCH, LR_MIN, LR_MAX, LR_END
+)
 optimizer_state = optimizer.init(model_params)
 
 # Create the function that will compute the contribution to the loss from a
@@ -135,12 +145,13 @@ optimizer_state = optimizer.init(model_params)
 log_cosh = create_log_cosh(LOG_COSH_PARAMETER)
 
 # Get flattened key-value list of trainable parameters.
-flat_params = {'/'.join(k[-2:]): v.shape for k, v in \
-    flax.traverse_util.flatten_dict(flax.core.unfreeze(model_params)).items()}
+flat_params = {'/'.join(k[-2:]): v.shape for k, v in
+                    flax.traverse_util.flatten_dict(
+                        flax.core.unfreeze(model_params)).items()}
 print(flat_params)
 
 def calc_loss_contribution(pred_energy, pred_forces, obs_energy, obs_forces):
-    "Return the log-cosh of the difference between predicted and actual forces."
+    "Return the log-cosh of the difference between predicted and actual forces"
     delta_forces = obs_forces - pred_forces
     return log_cosh(delta_forces).mean()
 
@@ -160,7 +171,7 @@ training_epoch = create_training_epoch(
     N_BATCH,
     training_step,
     epoch_rng,
-    log_wandb = False
+    log_wandb=False
 )
 
 # Create a dictionary of validation statistics that we want calculated.
@@ -192,19 +203,23 @@ validation_step = create_validation_step(
 
 min_mae = jnp.inf
 for i in range(N_EPOCHS):
-    # Reset the training schedule.
+    # Reset the training schedule and run a full epoch.
     optimizer_state = reset_one_cycle_minimizer(optimizer_state)
-    # Run a full epoch.
     optimizer_state, model_params = training_epoch(
-        optimizer_state, model_params
-    )
+        optimizer_state, model_params)
+
     # Evaluate the results.
     statistics = validation_step(model_params)
     mae = statistics["force_MAE"]
     rmse = statistics["force_RMSE"]
+    print(
+        f"VAL RMSE = {rmse:.4f} {validation_units['force_RMSE']}. \n"
+        f"VAL MAE = {mae:.4f} {validation_units['force_MAE']}."
+    )
 
     # Save the state only if the validation MAE is minimal.
     if mae < min_mae:
+        min_mae = mae
         model_info = JATModelInfo(
             model_name="JAT",
             model_details=f"EAN {N_PAIR}",
@@ -215,7 +230,7 @@ for i in range(N_EPOCHS):
             embed_d=EMBED_D,
             layer_dims=LAYER_DIMS,
             n_head=N_HEADS,
-            n_atoms = N_PAIR * 15,
+            n_atoms=N_PAIR*15,
             constructor_kwargs={"cell_size": cells_train[0]},
             random_seed=SEED,
             params=flax.serialization.to_state_dict(model_params),
@@ -224,9 +239,3 @@ for i in range(N_EPOCHS):
         with open(PICKLE_FILE, "wb") as f:
             pickle.dump(model_info, f, protocol=5)
         print(f"woooo {mae:.4f} mae & {rmse:.4f} rmse")
-        min_mae = mae
-    
-    print(
-        f"VAL RMSE = {rmse:.4f} {validation_units['force_RMSE']}. \n"
-        f"VAL MAE = {mae:.4f} {validation_units['force_MAE']}."
-    )

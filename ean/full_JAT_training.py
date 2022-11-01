@@ -12,10 +12,10 @@ import jax.numpy as jnp
 import flax
 
 if os.getcwd().startswith('/workspace/'):
-    sys.path.append('/workspace/JAT_potential/src')
+    sys.path.append('/workspace/bessel-nn-potentials/src')
     log_wandb = True
 else:
-    sys.path.append('/home/stefan/tu/JAT_potential/src')
+    sys.path.append('/home/stefan/tu/bessel-nn-potentials/src')
     log_wandb = True
 
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
@@ -116,6 +116,7 @@ for p, t, c in zip(positions, types, cells):
             jnp.asarray(c)))
 print(f"Maximum of {graph_neighbors} neighbors for Graph generation")
 
+# Call JAT model & components constructors
 core_model = JatCore(
     layer_dims=LAYER_DIMS,
     n_head=N_HEADS
@@ -133,11 +134,7 @@ dynamics_model = JatModel(
     core_model
 )
 
-# Create the minimizer.
-optimizer = create_one_cycle_minimizer(
-    n_train // N_BATCH, LR_MIN, LR_MAX, LR_END
-)
-
+# Initialize the JAT model parameters
 rng, init_rng = jax.random.split(rng)
 model_params = dynamics_model.init(
     init_rng,
@@ -147,6 +144,10 @@ model_params = dynamics_model.init(
     method=JatModel.calc_forces
 )
 
+# Create and initialize the one cycle minimizer
+optimizer = create_one_cycle_minimizer(
+    n_train // N_BATCH, LR_MIN, LR_MAX, LR_END
+)
 optimizer_state = optimizer.init(model_params)
 
 # Create the function that will compute the contribution to the loss from a

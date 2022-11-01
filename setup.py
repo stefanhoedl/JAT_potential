@@ -20,17 +20,17 @@ setup(
     description="Jraph Attention Networks: an attention-based atomistic deep learning potential",
     author="Stefan Hödl",
     author_email="stefano.hoedl@gmail.com",
-    python_requires=">=3.8",
+    python_requires=">=3.8.10",
     packages=find_packages(where="./src/jat"),
     install_requires=[
-        "jax >= 0.3.10",
-        "jaxlib >= 0.3.10",
+        "jax == 0.3.10",
+        "jaxlib == 0.3.10",
+        "flax == 0.4.2",
+        "numpy == 1.19.5",
         "jraph >= 0.0.5.dev0",
         "wandb >= 0.13.0",
-        "flax >= 0.4.2",
         "optax >= 0.1.2",
-        "ase >= 3.22.0"
-        "numpy >= 1.19.5",
+        "ase >= 3.22.0",
         "tqdm >= 4.61.1",
         "h5py >= 3.1.0",
     ]

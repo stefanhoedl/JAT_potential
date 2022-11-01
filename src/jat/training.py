@@ -26,7 +26,6 @@ from matplotlib.pyplot import axis
 import optax
 import tqdm
 import wandb
-import chex
 import tqdm.auto
 import time
 

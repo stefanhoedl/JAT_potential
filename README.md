@@ -1,5 +1,5 @@
-# JAT potential: Jraph Attention Networks
-Jraph Attention Networks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
+# Sparse graph attention networks as efficient ionic liquid potentials
+Master thesis: Jraph Attention neTworks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
 
 - predict the potential energy and atomic forces of molecules
 - extends the NeuralIL architecture and implementation
@@ -14,10 +14,10 @@ Performs multiple message passing steps by
 - weighted sum of features + skip connection as the update function
 - pyramidal regression head as readout function
 
-
 <p align="center">
 <img src="figs/jatOnlyModel.png" align="center"/>
 </p>
+
 
 # Architecture overview & background
 The architecture uses message passing neural networks (MPNN) [2] with an attentional update function (linear dynamic attention, GATv2) [4] by adapting Graph Attention Networks (GAT) [3] to the domain of computational chemistry. The name JAT (JraphAttentionNetworks) derives from adapting Graph Attention Networks in JAX and builds upon the Jraph library. 
@@ -34,6 +34,8 @@ In this thesis, I've
 - while optimizing for efficiency of the architecture and achieving a 4x speedup over the supervisors' baseline with comparable accuracy.
 
 # Overview
+[Also available as a poster here!](https://github.com/stefanhoedl/JAT_potential/blob/main/figs/JAT_thesis_poster.pdf)
+
 - Domain:        Computational chemistry
 - Goal:           Predict the energy of molecules
 - Task:           Learn the potential energy surface (PES)
@@ -42,11 +44,12 @@ In this thesis, I've
 - Problem:     "Exponential barrier" of electronic contribution 
 - Solution:        Approximate the Schrödinger Equation efficient Deep Neural Networks
 
-___
 
 <p align="center">
 <img src="figs/modelGrad_energyForces.png" width="500" align="center"/>
 </p>
+
+___
 
 ## … but why? Molecular Dynamics!
 - Obtain 3Natoms forces as gradient of energy w.r.t. positions
@@ -84,7 +87,6 @@ ___
 
 # JAT architecture
 
-
 ## [JAT Core](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L17)
 ```
 src > jat_model.py > JatCore
@@ -107,8 +109,7 @@ src > jat_model.py > GraphGenerator > make_graph
 <img src="figs/vis_graphGen.png" width="400" align="center"/>
 </p>
 
- of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $L^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list*
-  in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
+Visualization of the graph generator component of the JAT architecture. Using the Cartesian coordinates (positions) of all atoms, the pairwise distance matrix is calculated using the Euclidean $L^2$ norm under consideration of periodic boundary conditions. The distances are filtered using the graph cut parameter to only include pairs within close proximity, which are connected by an edge. This generated molecular graph is represented as an *edge list* in a sparse format using three arrays, respectively the triplets of sender, receiver and distance. Since the number of edges depends on the positions, the edge list is padded with masked edges up to a static maximum.
 
 ## [JAT Layer](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L95)
 ```
@@ -133,41 +134,47 @@ Visualization of the attention mechanism of the JAT architecture. For every $\ma
 Clone the repository, create an environment using conda and install dependencies using pip.
 
 ```
+git clone https://github.com/stefanhoedl/JAT_potential
+cd JAT_potential
 conda create -e JAT
 conda activate JAT
-cd JAT_potential
 pip install .
 ```
 
 If you have a GPU, install a matching CUDA-supported jaxlib version: 
 
-[Download jaxlib 0.3.10+cuda11.cudnn805 here](https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.10+cuda11.cudnn805-cp38-none-manylinux2014_x86_64.whl) with matching jax version (here 0.3.10)
+[Download jaxlib 0.3.10+cuda11.cudnn805 here](https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.10+cuda11.cudnn805-cp38-none-manylinux2014_x86_64.whl) to match installed jax, cuda & cudnn versions
 
-# EAN Dataset
+# EAN dataset
 ```
 ean > train_JAT_EAN.py     - minimal training script, val only
 ean > full_JAT_training.py - full script with val+test, logging, loading
+ean > load_run_JAT_EAN.py  - script to load trained model & predict
+
 ean > configurations.json  - EAN dataset
+ean > models > 
+    JAT_EAN15_ep3K.pickle  - Model weights after 3K training epochs
 ```
 [Script to train JAT on EAN dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ean/train_JAT_EAN.py)
 
 - Ionic liquid: anion-cation pairs (salt) in liquid phase at room temperature
 - 15 EAN pairs → 225 atoms
-- dataset copyrights from NeuralIL authors
+- Copyrights for EAN dataset from NeuralIL authors
 - sampled from OPLS-AA MD trajectory
-- reference energy & forces from DFT
+- Reference energy & forces from DFT
 - 741 configurations
 - training on atomic forces
 
-# ANI-1 Dataset
+# ANI-1 dataset
+[Download ANI-1 dataset here](https://github.com/isayev/ANI1_dataset) and unzip to data directory
+
 ```
 ani1 > train_JAT_ANI1.py   - full ANI-1 training script
 ani1 > ANI-1_release       - ANI-1 data directory
+       > ani_gdb_s01.h5    - Data files, 1-heavy atom subset
 
 ```
-[Script to train JAT on ANI-1 dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ani1/train_JAT_ANI1.py)
-
-[TODO ANI1 dataset download link + unzip]()
+[Script to train JAT on ANI-1 dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ani1/train_JAT_ANI1.py) 
 
 
 
@@ -181,12 +188,27 @@ ani1 > ANI-1_release       - ANI-1 data directory
 
 [4] Brody, Shaked, Uri Alon, and Eran Yahav. "How attentive are graph attention networks?." arXiv preprint arXiv:2105.14491 (2021).
 
+# Citation
+If you find this code useful, please cite the following:
+
+```
+@misc{Hödl2022JAT,
+  author = {Hödl, Stefan},
+  title = {JAT potential: master thesis},
+  year = {2022},
+  publisher = {Technical University Vienna},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/stefanhoedl/JAT_potential}},
+}
+```
 
 # Useful links
 [NeuralIL code](https://github.com/Madsen-s-research-group/neuralil-public-releases) and [Paper](https://pubs.acs.org/doi/10.1021/acs.jcim.1c01380)
 
 [GATv2 LabML implementation](https://nn.labml.ai/graphs/gatv2/)
 
-[Jraph Docs](https://jraph.readthedocs.io/)
+[GAT implementations in PyTorch](https://github.com/gordicaleksa/pytorch-GAT)
 
-[ANI-1 dataset](https://github.com/isayev/ANI1_dataset)
+[JAX Docs](https://jax.readthedocs.io/en/latest/)
+
+[Jraph Docs](https://jraph.readthedocs.io/)

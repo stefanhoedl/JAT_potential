@@ -186,7 +186,22 @@ ani1 > ANI-1_release       - ANI-1 data directory
 [Script to train JAT on ANI-1 dataset](https://github.com/stefanhoedl/JAT_potential/blob/main/ani1/train_JAT_ANI1.py) 
 
 
+# nablaDFT dataset
+## Setup
+```
+clone https://github.com/AIRI-Institute/nablaDFT into ./nablaDFT
+download hamiltonian_databases:
+	"dataset_train_2k": 			 "https://sc.link/2ZAA"
+	"dataset_test_conformations_2k": "https://sc.link/0ZyN"
+```
+Load data (positions, types, energy, forces) from db, pad (mask) up to static maximum and train the JAT model on the dataset.
 
+``` 
+nablaDFT > train_nabla.py	- training script for JAT
+nablaDFT > train_nabla 		- script to only load & prep dataset 
+nablaDFT > data > dataset_train_2k				
+				> dataset_test_2k_conformers	
+```
 
 # References
 [1] Hadrián Montes-Campos, Jesús Carrete, Sebastian Bichelmaier, Luis M Varela, and Georg KH Madsen. A differentiable neural-network force field for ionic liquids. Journal of chemical information and modeling, 62(1):88–101, 2021

@@ -10,96 +10,147 @@ from collections import OrderedDict
 import jax
 import jax.numpy as jnp
 import flax
+import numpy as np
+
+if os.getcwd().startswith('/workspace/'):
+    ## docker on rig
+    sys.path.append('/workspace/JAT_potential/src')
+    log_wandb = True
+else:
+    ## local
+    sys.path.append('/home/stefan/jobs/JAT_potential/src')
+    log_wandb = False
 
 from jat.jat_model import JatCore, JatModel, GraphGenerator, JATModelInfo
 from jat.training import *
 from jat.utilities import create_array_shuffler, draw_urandom_int32, \
     get_max_number_of_neighbors
-
-log_wandb = True
+from nablaDFT.nablaDFT.dataset import HamiltonianDatabase
 
 # Training Config
-TRAINING_FRACTION = .865
+TRAINING_FRACTION = .9
 N_BATCH = 8
 N_EVAL_BATCH = 32
-SEED = 421
+SEED = 42
 LOG_COSH_PARAMETER = 1e0  # In angstrom / eV
 LR_MIN, LR_MAX, LR_END = 0.5e-4, 0.3e-3, 0.5e-6
-N_EPOCHS = 2001
-N_PAIR = 15
+N_EPOCHS = 21
 
 # JAT MODEL
-LAYER_DIMS = [48, 48, 48, 48, 48, 48, 48]
+LAYER_DIMS = [48, 48, 48, 48]
 GRAPH_CUT = 5
 EMBED_D = 48
 N_HEADS = 1
 
+rng = jax.random.PRNGKey(SEED)
 instance_code = draw_urandom_int32()
-CONFIGS_DFT = "./configurations.json"
-PICKLE_FILE = f"./ean/models/JAT_EAN15_{instance_code}.pickle"
+PICKLE_FILE = f"./nablaDFT/models/JAT_nablaDFT_{instance_code}.pickle"
 
-type_cation = ["N", "H", "H", "H", "C", "H", "H", "C", "H", "H", "H"]
-type_anion = ["N", "O", "O", "O"]
-types = N_PAIR * type_cation + N_PAIR * type_anion
+train = HamiltonianDatabase("./nablaDFT/data/dataset_train_2k.db")
+test = HamiltonianDatabase("./nablaDFT/data/dataset_test_2k_conformers.db")
+Z, R, E, F, _, _, _ = train[0]  # atoms numbers, atoms positions, energy, forces, core hamiltonian, overlap matrix, coefficients matrix
+print(len(train))
+print(f"Z {Z.shape}, R {R.shape}, E {E.shape}, F {F.shape}")
 
-sorted_elements = sorted(set(types))
-type_dict = OrderedDict()
-for i, k in enumerate(sorted_elements):
-    type_dict[k] = i
-types = jnp.array([type_dict[i] for i in types])
-n_atoms = len(types)
-
-cells = []
-positions = []
-energies = []
-forces = []
-
-with open(
-    (pathlib.Path(__file__).parent /
-        CONFIGS_DFT).resolve(), "r") as json_dft:
-    for line in json_dft:
-        json_data = json.loads(line)
-        cells.append(jnp.diag(jnp.array(json_data["Cell-Size"])))
-        positions.append(json_data["Positions"])
-        energies.append(json_data["Energy"])
-        forces.append(json_data["Forces"])
-
-n_configurations = len(positions)
-types = jnp.array([types for i in range(n_configurations)])
-
-n_train = int(TRAINING_FRACTION*n_configurations)
-n_validate = (n_configurations - n_train) // 2
-n_test = n_configurations - n_train - n_validate
-print(f"\t- {n_train} will be used for training")
-print(f"\t- {n_validate} will be used for validation")
-print(f"\t- {n_test} will be used for test")
-n_types = int(types.max()) + 1
+SEED = 42
 
 rng = jax.random.PRNGKey(SEED)
-rng, shuffler_rng = jax.random.split(rng)
-shuffle = create_array_shuffler(shuffler_rng)
-cells = shuffle(cells)
-positions = shuffle(positions)
-energies = shuffle(energies)
-types = shuffle(types)
-forces = shuffle(forces)
+instance_code = draw_urandom_int32()
+PICKLE_FILE = f'./nablaDFT/models/JAT_nabla_{instance_code}.pickle'
+
+# loop through dataset once to collect unique elements and maximum atoms
+max_nbr_atoms = 0
+sorted_elements = set()
+for i in range(len(train)):
+    t, _, _, _, _, _, _ = train[i] # types
+    max_nbr_atoms = np.max((max_nbr_atoms, len(t)))
+    sorted_elements = sorted_elements.union(set(t))
+
+# create element --> int mapping dict
+type_dict = OrderedDict()
+sorted_elements = sorted(sorted_elements)
+for i, k in enumerate(sorted_elements):
+    type_dict[k] = i
+
+# create numpy arrays for positions, types & energies (p, t, e)
+positions = np.empty((0, max_nbr_atoms, 3))
+types = np.empty((0, max_nbr_atoms), dtype=int)
+energies = np.empty(0)
+forces = np.empty((0, max_nbr_atoms, 3))
+
+# loop through molecules: train
+subtotal = 0
+for i in range(len(train)):
+    rng, data_rng = jax.random.split(rng)
+    _t, p, e, f, _, _, _ = train[i]
+    t = np.array([type_dict[i] for i in _t], dtype=int)
+    # t: types
+    # p: Cartesian coordinates in bohr
+    # e: energy in Eh
+    # f: forces in Eh/bohr
+
+    # pad up to static maximum (max_nbr_atoms)
+    padding = max_nbr_atoms - p.shape[0]
+    if padding:
+        p = np.pad(p, ((0, padding), (0, 0)), "constant")
+        t = np.pad(t, (0, padding), "constant", constant_values=-1)
+        f = np.pad(f, ((0, padding), (0, 0)), "constant")
+
+    positions = np.append(positions, p[None, ...], axis=0)
+    energies = np.append(energies, e[...], axis=0)
+    forces = np.append(forces, f[None, ...], axis=0)
+    types = np.append(types, t[None, ...], axis=0)
+
+    # break if MAX_CONFIGS exceeded
+    subtotal += 1
+    if subtotal >= 20000:
+        break
+print(positions.shape, energies.shape, forces.shape, types.shape)
+
+# loop through molecules: test
+positions_test = np.empty((0, max_nbr_atoms, 3))
+types_test = np.empty((0, max_nbr_atoms), dtype=int)
+energies_test = np.empty(0)
+forces_test = np.empty((0, max_nbr_atoms, 3))
+for i in range(len(test)):
+    rng, data_rng = jax.random.split(rng)
+    _t, p, e, f, _, _, _ = test[i]
+    t = np.array([type_dict[i] for i in _t], dtype=int)
+    
+    # pad up to static maximum (max_nbr_atoms)
+    padding = max_nbr_atoms - p.shape[0]
+    if padding:
+        p = np.pad(p, ((0, padding), (0, 0)), "constant")
+        t = np.pad(t, (0, padding), "constant", constant_values=-1)
+        f = np.pad(f, ((0, padding), (0, 0)), "constant")
+
+    positions_test = np.append(positions_test, p[None, ...], axis=0)
+    energies_test = np.append(energies_test, e[...], axis=0)
+    forces_test = np.append(forces_test, f[None, ...], axis=0)
+    types_test = np.append(types_test, t[None, ...], axis=0)
+
+n_configurations = len(positions)
+n_train = int(TRAINING_FRACTION * n_configurations)
+n_validate = (n_configurations - n_train)
+
+n_types = len(sorted_elements)
+cells = np.stack([np.eye(3)*0.] * n_configurations, axis=0)
+cells_test = np.stack([np.eye(3)*0.] * len(positions_test), axis=0)
 
 def split_array(in_array):
     "Split an array in training and validation sections."
-    return jnp.split(
-                in_array, (
-                    n_train,
-                    n_train + n_validate,
-                    n_train + n_validate + n_test
-                ))[:3]
+    return jnp.split(in_array, (n_train, n_train + n_validate))[:2]
 
+rng, shuffler_rng = jax.random.split(rng)
+shuffle = create_array_shuffler(shuffler_rng)
 
-cells_train, cells_validate, cells_test = split_array(cells)
-positions_train, positions_validate, positions_test = split_array(positions)
-types_train, types_validate, types_test = split_array(types)
-energies_train, energies_validate, energies_test = split_array(energies)
-forces_train, forces_validate, forces_test = split_array(forces)
+positions_train, positions_validate = split_array(shuffle(positions))
+types_train, types_validate = split_array(shuffle(types))
+energies_train, energies_validate = split_array(shuffle(energies))
+forces_train, forces_validate = split_array(shuffle(forces))
+cells_train, cells_validate = split_array(shuffle(cells))
 
+# determine maximum number of neighbors
 graph_neighbors = 1
 for p, t, c in zip(positions, types, cells):
     graph_neighbors = max(
@@ -113,13 +164,13 @@ print(f"Maximum of {graph_neighbors} neighbors for Graph generation")
 
 # Call JAT model & components constructors
 core_model = JatCore(
-    layer_dims=LAYER_DIMS,
-    n_head=N_HEADS
+    LAYER_DIMS,
+    N_HEADS
 )
 graph_gen = GraphGenerator(
-    n_atoms,
+    max_nbr_atoms,
     GRAPH_CUT,
-    cells_train[0],
+    None,
     graph_neighbors
 )
 dynamics_model = JatModel(
@@ -135,7 +186,7 @@ model_params = dynamics_model.init(
     init_rng,
     positions_train[0],
     types_train[0],
-    cells_train[0],
+    None,
     method=JatModel.calc_forces
 )
 
@@ -151,9 +202,8 @@ log_cosh = create_log_cosh(LOG_COSH_PARAMETER)
 
 if log_wandb:
     import wandb
-    wandb.init(project='il-jat-EAN-production', config={
+    wandb.init(project='jat-nablaDFT', config={
         "N_EPOCHS": N_EPOCHS,
-        "N_PAIR": N_PAIR,
         "TRAINING_FRACTION": TRAINING_FRACTION,
         "GRAPH_CUT": GRAPH_CUT,
         "PICKLE_FILE": PICKLE_FILE,
@@ -268,16 +318,16 @@ for i in range(N_EPOCHS):
         min_mae = mae
         model_info = JATModelInfo(
             model_name="JAT",
-            model_details=f"EAN {N_PAIR}",
+            model_details=f"nablaDFT 2k train test",
             timestamp=datetime.now(),
+            n_atoms=max_nbr_atoms,
             graph_cut=GRAPH_CUT,
             graph_neighbors=graph_neighbors,
             sorted_elements=sorted_elements,
             embed_d=EMBED_D,
             layer_dims=LAYER_DIMS,
             n_head=N_HEADS,
-            n_atoms=N_PAIR*15,
-            constructor_kwargs={"cell_size": cells_train[0]},
+            constructor_kwargs={"cell_size": None},
             random_seed=SEED,
             params=flax.serialization.to_state_dict(model_params),
             specific_info=None)
@@ -285,9 +335,10 @@ for i in range(N_EPOCHS):
             pickle.dump(model_info, f, protocol=5)
         print(f"woooo {mae:.4f} mae & {rmse:.4f} rmse")
 
-    # Save the best model every 250 epochs
-    if i % 250 == 249 and i > 0:
-        PICKLE_EPOCH = f"./ean/models/JAT_EAN15_{instance_code}_ep{i+1}.pickle"
+    # Periodically save the best model (every 10 epochs).
+    if (i % 10) == 9 and i > 0:
+        PICKLE_EPOCH = \
+            f'./nablaDFT/models/JAT_nablaDFT{instance_code}_epoch{i+1}.pickle'
         with open(PICKLE_EPOCH, "wb") as f:
             pickle.dump(model_info, f, protocol=5)
 
@@ -304,7 +355,7 @@ core_model = JatCore(
 graph_gen = GraphGenerator(
     model_info.n_atoms,
     model_info.graph_cut,
-    model_info.constructor_kwargs["cell_size"],
+    None,
     model_info.graph_neighbors
 )
 dynamics_model = JatModel(

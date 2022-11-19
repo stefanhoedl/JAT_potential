@@ -13,7 +13,7 @@ The JAT architecture takes as input the 3N Cartesian coordinates and N types (at
 - using the dynamic linear attention function (GATv2) [4] as the message function
 
     (masked multi-headed self-attention),
-- and a weighted sum of features and skip connection as the update function,
+- a weighted sum of features and skip connection as the update function,
 - a pyramidal regression head as the readout function
 - and finally takes a sum over all atomic contributions to obtain the potential energy. 
 
@@ -109,7 +109,7 @@ JatModel is a Wrapper around the JatCore model to calculate the potential energy
 
 ## [Graph Generator](https://github.com/stefanhoedl/JAT_potential/blob/main/src/jat/jat_model.py#L231)
 ```
-src > jat_model.py > GraphGenerator > make_graph
+src > jat_model.py > GraphGenerator
 ```
 
 <p align="center">

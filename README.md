@@ -137,7 +137,7 @@ src > jat_model.py > JatLayer.attention()
 <img src="figs/vis_attention.png" width="400" align="center"/>
 </p>
 
-Visualization of the attention mechanism of the JAT architecture. For every $edge_{ij}$ in the edge list, the features of $\textrm{sender}_i$, $\textrm{receiver}_j$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$.
+Visualization of the attention mechanism of the JAT architecture. For every $edge_{ij}$ in the edge list, the features of ${sender}_i$, ${receiver}_j$ and $d_{ij}$ are *lifted* and with a projection parametrized by ${a}^{T}$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain ${\alpha}_{ij}$.
 
 ___
 

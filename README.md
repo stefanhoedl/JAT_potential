@@ -18,7 +18,7 @@ The JAT architecture takes as input the 3N Cartesian coordinates and N types (at
 - and finally takes a sum over all atomic contributions to obtain the potential energy. 
 
 <p align="center">
-<img src="figs/jatOnlyModel.png" align="center"/>
+<img src="figs/vis_ArchitectureOnly.png" align="center"/>
 </p>
 
 
@@ -135,7 +135,8 @@ src > jat_model.py > JatLayer.attention()
 <p align="center">
 <img src="figs/vis_attention.png" width="400" align="center"/>
 </p>
-Visualization of the attention mechanism of the JAT architecture. For every $\mathrm{edge}_{ij}$ in the edge list, the features of $\mathrm{sender}_{i}$, $\mathrm{receiver}_{j}$ and $d_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$. }
+Visualization of the attention mechanism of the JAT architecture. For every $edge_{ij}$ in the edge list, the features of $sender_{i}$, $receiver_{j}$ and $d_{ij}$ are lifted and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$.
+
 ___
 
 # Setup

@@ -132,11 +132,12 @@ Visualization of a single JAT layer, which performs a single round of message pa
 ```
 src > jat_model.py > JatLayer.attention()
 ```
+
 <p align="center">
 <img src="figs/vis_attention.png" width="400" align="center"/>
 </p>
 
-Visualization of the attention mechanism of the JAT architecture. For every $edge_{ij}$ in the edge list, the features of $\textrm{sender}_{i}$, $\textrm{receiver}_{j}$ and $\textrm{d}_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $e_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$.
+Visualization of the attention mechanism of the JAT architecture. For every $\textrm{edge}_{ij}$ in the edge list, the features of $\textrm{sender}_{i}$, $\textrm{receiver}_{j}$ and $\textrm{d}_{ij}$ are *lifted* and with a projection parametrized by $a^T$ transformed into $\textrm{e}_{ij}$. These weights are normalized over all received messages with a segment softmax function to obtain $\alpha_{ij}$.
 
 ___
 

@@ -1,5 +1,8 @@
 # Sparse graph attention networks as efficient ionic liquid potentials
-Master thesis: Jraph Attention neTworks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
+This repository contains the code accompanying my master's thesis, an interdisciplinary work at the intersection of data science, deep learning and theoretical molecular chemistry.
+You can find the PDF of the thesis [in the repository](https://github.com/stefanhoedl/JAT_potential/blob/main/Hoedl2022_thesis.pdf) or at the [official TU Vienna thesis repository](https://repositum.tuwien.at/handle/20.500.12708/113065).
+
+# Master thesis: Jraph Attention neTworks (JAT), a deep learning architecture to predict the potential energy and forces of organic molecules and ionic liquids.
 
 - to predict the potential energy and atomic forces of molecules
 - operates within the message passing neural networks (MPNN) framework [2]
@@ -216,16 +219,16 @@ nablaDFT > data > dataset_train_2k
 [4] Brody, Shaked, Uri Alon, and Eran Yahav. "How attentive are graph attention networks?." arXiv preprint arXiv:2105.14491 (2021).
 
 # Citation
-If you find this code useful, please cite the following:
+If you find the thesis or code useful, please cite the following:
 
 ```
-@misc{Hödl2022JAT,
-  author = {Hödl, Stefan},
-  title = {Sparse graph attention networks as efficient ionic liquid potentials},
-  year = {2022},
-  publisher = {Technical University Vienna},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/stefanhoedl/JAT_potential}},
+@mastersthesis{Hoedl2022,
+  title={Sparse graph attention networks as efficient ionic liquid potentials},
+  author={H{\"o}dl, Stefan},
+  year={2022},
+  school={Technische Universit{\"a}t Wien},
+  doi={https://doi.org/10.34726/hss.2022.98004},
+  url={https://github.com/stefanhoedl/JAT_potential},
 }
 ```
 
